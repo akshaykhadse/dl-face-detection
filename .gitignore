@@ -93,5 +93,4 @@ ENV/
 # Rope project settings
 .ropeproject
 
-data/final_negative
-data/final_positive
+face_detection_dataset/

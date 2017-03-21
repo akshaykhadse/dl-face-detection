@@ -23,7 +23,9 @@ train_labels_file = 'train/train.csv'
 
 
 def encode_label(label):
-    return [int(label)]
+    label_list = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    label_list[int(label)] = 1
+    return label_list
 
 
 def read_label_file(file):
@@ -166,10 +168,10 @@ Define Placeholders and Variables
 """
 
 x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
-y_ = tf.placeholder(tf.float32, shape=[None, 1])
+y_ = tf.placeholder(tf.float32, shape=[None, 10])
 
 W = tf.Variable(tf.zeros([28, 28, 1]))
-b = tf.Variable(tf.zeros([1]))
+b = tf.Variable(tf.zeros([10]))
 
 
 def weight_variable(shape):
@@ -221,7 +223,7 @@ keep_prob = tf.placeholder(tf.float32)
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
 W_fc2 = weight_variable([1024, 1])
-b_fc2 = bias_variable([1])
+b_fc2 = bias_variable([10])
 
 y_conv = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
@@ -243,7 +245,7 @@ with tf.Session() as sess:
     threads = tf.train.start_queue_runners(coord=coord)
 
     print("Training")
-    for i in range(20):
+    for i in range(200):
         feed_dict = {x: train_image_batch.eval(),
                      y_: train_label_batch.eval(),
                      keep_prob: 1.0}
