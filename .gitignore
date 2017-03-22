@@ -94,3 +94,4 @@ ENV/
 .ropeproject
 
 face_detection_dataset/
+*.tar.gz
