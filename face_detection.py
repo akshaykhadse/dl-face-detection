@@ -195,6 +195,10 @@ test_label_batch = tf.concat([pos_test_label_batch, neg_test_label_batch], 0)
 
 # ### Run the Queue Runners and Start a Session
 # - **Note:** This section is meant for testing only. Do not run during main code.
+
+# In[ ]:
+
+'''
 with tf.Session() as sess:
     # Initialize the variables
     sess.run(tf.global_variables_initializer())
@@ -216,17 +220,17 @@ with tf.Session() as sess:
     coord.request_stop()
     coord.join(threads)
     sess.close()
+'''
+
+
 # ## Neural Network Model
 
 # ### Define Placeholders and Variables
 
-# In[ ]:
+# In[7]:
 
 x = tf.placeholder(tf.float32, shape=[None, 128, 128, 1])
 y_ = tf.placeholder(tf.float32, shape=[None, 1])
-
-W = tf.Variable(tf.zeros([5, 5, 1]))
-b = tf.Variable(tf.zeros([1]))
 
 
 def weight_variable(shape):
@@ -241,7 +245,7 @@ def bias_variable(shape):
 
 # ### Define Model
 
-# In[ ]:
+# In[8]:
 
 def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
@@ -252,24 +256,25 @@ def max_pool_2x2(x):
                           padding='SAME')
 
 
-W_conv1 = weight_variable([5, 5, 1, 32])
-b_conv1 = bias_variable([32])
+
+W_conv1 = weight_variable([5, 5, 1, 1])
+b_conv1 = bias_variable([1])
 
 x_image = tf.reshape(x, [-1, 128, 128, 1])
 
 h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
 h_pool1 = max_pool_2x2(h_conv1)
 
-W_conv2 = weight_variable([5, 5, 32, 64])
-b_conv2 = bias_variable([64])
+W_conv2 = weight_variable([5, 5, 1, 1])
+b_conv2 = bias_variable([1])
 
 h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
 h_pool2 = max_pool_2x2(h_conv2)
 
-W_fc1 = weight_variable([7 * 7 * 64, 1024])
+W_fc1 = weight_variable([32 * 32 * 1, 1024])
 b_fc1 = bias_variable([1024])
 
-h_pool2_flat = tf.reshape(h_pool2, [-1, 7*7*64])
+h_pool2_flat = tf.reshape(h_pool2, [-1, 32*32*1])
 h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
 keep_prob = tf.placeholder(tf.float32)
@@ -291,8 +296,8 @@ train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_conv, 1),  tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction,  tf.float32))
 
-train_iterations = 2
-test_iterations = 2
+train_iterations = 10000
+test_iterations = 100
 
 with tf.Session() as sess:
     # Initialize the variables
@@ -300,7 +305,26 @@ with tf.Session() as sess:
     # Initialize the queue threads to start to shovel data
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
-
+    '''
+    print('W_conv1: ' + str(sess.run(tf.shape(W_conv1))))
+    print('b_conv1: ' + str(sess.run(tf.shape(b_conv1))))
+    print('x_image: ' + str(sess.run(tf.shape(x_image), feed_dict = {x: train_image_batch.eval()})))
+    print('h_conv1: ' + str(sess.run(tf.shape(h_conv1), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval()})))
+    print('h_pool1: ' + str(sess.run(tf.shape(h_pool1), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval()})))
+    print('W_conv2: ' + str(sess.run(tf.shape(W_conv2))))
+    print('b_conv2: ' + str(sess.run(tf.shape(b_conv2))))
+    print('h_conv2: ' + str(sess.run(tf.shape(h_conv2), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval()})))
+    print('h_pool2: ' + str(sess.run(tf.shape(h_pool2), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval()})))
+    print('W_fc1: ' + str(sess.run(tf.shape(W_fc1))))
+    print('b_fc1: ' + str(sess.run(tf.shape(b_fc1))))
+    print('h_pool2_flat: ' + str(sess.run(tf.shape(h_pool2_flat), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval()})))
+    print('h_fc1: ' + str(sess.run(tf.shape(h_fc1), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval()})))
+    print('keep_prob: ' + str(sess.run(tf.shape(keep_prob), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep})))
+    print('h_fc1_drop: ' + str(sess.run(tf.shape(h_fc1_drop), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
+    print('W_fc2: ' + str(sess.run(tf.shape(W_fc2))))
+    print('b_fc2: ' + str(sess.run(tf.shape(b_fc2))))
+    print('y_conv: ' + str(sess.run(tf.shape(y_conv), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
+    '''
     print("Training")
     for i in range(train_iterations):
         start_time = time()
@@ -315,7 +339,7 @@ with tf.Session() as sess:
                      keep_prob: 0.5}
         train_step.run(feed_dict)
         end_time = time()
-        print("Step %d, Training time %f" % (i, start_time - end_time))
+        print("Step %d, Training time %f" % (i, end_time - start_time))
 
     for i in range(test_iterations):
         print("test accuracy %g" % accuracy.eval(feed_dict={
