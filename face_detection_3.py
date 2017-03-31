@@ -13,7 +13,6 @@ from glob import glob
 from time import time
 from math import ceil
 
-
 # ## Reading Data
 
 # ### Load Label Data
@@ -72,7 +71,7 @@ neg_labels = ops.convert_to_tensor(neg_labels, dtype=dtypes.int32)
 
 # ### Partitioning Data
 
-# In[4]:
+# In[7]:
 
 test_set_size = 1200
 pos_test_size = ceil(test_set_size / 6)
@@ -82,7 +81,7 @@ neg_test_size = test_set_size - pos_test_size
 # Create a partition vector
 pos_partitions = [0] * len(pos_filepaths)
 # print(partitions)
-pos_partitions[:pos_test_size] = [1] * pos_test_size
+pos_partitions[:int(pos_test_size)] = [1] * int(pos_test_size)
 # print(partitions)
 random.shuffle(pos_partitions)
 # print(partitions)
@@ -95,7 +94,7 @@ pos_train_labels, pos_test_labels = tf.dynamic_partition(pos_labels, pos_partiti
 # Create a partition vector
 neg_partitions = [0] * len(neg_filepaths)
 # print(partitions)
-neg_partitions[:neg_test_size] = [1] * neg_test_size
+neg_partitions[:int(neg_test_size)] = [1] * int(neg_test_size)
 # print(partitions)
 random.shuffle(neg_partitions)
 # print(partitions)
@@ -107,7 +106,7 @@ neg_train_labels, neg_test_labels = tf.dynamic_partition(neg_labels, neg_partiti
 
 # ### Build the Input Queues and Define How to Load Images
 
-# In[5]:
+# In[8]:
 
 NUM_CHANNELS = 1
 
@@ -152,8 +151,8 @@ neg_test_label = neg_test_queue[1]
 
 IMAGE_HEIGHT = 128
 IMAGE_WIDTH = 128
-BATCH_SIZE = 240
-POS_BATCH_SIZE = ceil(BATCH_SIZE / 6)
+BATCH_SIZE = 120
+POS_BATCH_SIZE = int(ceil(BATCH_SIZE / 6))
 NEG_BATCH_SIZE = BATCH_SIZE - POS_BATCH_SIZE
 
 # Define tensor shape
@@ -227,7 +226,7 @@ with tf.Session() as sess:
 
 # ### Define Placeholders and Variables
 
-# In[7]:
+# In[10]:
 
 x = tf.placeholder(tf.float32, shape=[None, 128, 128, 1])
 y_ = tf.placeholder(tf.float32, shape=[None, 1])
@@ -239,16 +238,16 @@ def weight_variable(shape):
 
 
 def bias_variable(shape):
-    initial = tf.constant(0.1, shape=shape)
+    initial = tf.constant(0.0, shape=shape)
     return tf.Variable(initial)
 
 
 # ### Define Model
 
-# In[8]:
+# In[19]:
 
-def conv2d(x, W):
-    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+def conv2d(x, W, strides=[1, 1, 1, 1]):
+    return tf.nn.conv2d(x, W, strides, padding='SAME')
 
 
 def max_pool_2x2(x):
@@ -257,55 +256,79 @@ def max_pool_2x2(x):
 
 
 
-W_conv1 = weight_variable([5, 5, 1, 5])
-b_conv1 = bias_variable([5])
+W_conv1 = weight_variable([51, 51, 1, 20])
+b_conv1 = bias_variable([20])
+
+W_conv2 = weight_variable([31, 31, 20, 20])
+b_conv2 = bias_variable([20])
+
+W_conv3 = weight_variable([17, 17, 20, 20])
+b_conv3 = bias_variable([20])
+
+W_conv4 = weight_variable([11, 11, 20, 20])
+b_conv4 = bias_variable([20])
+
+W_conv5 = weight_variable([5, 5, 20, 20])
+b_conv5 = bias_variable([20])
 
 x_image = tf.reshape(x, [-1, 128, 128, 1])
 
 h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
-h_pool1 = max_pool_2x2(h_conv1)
+h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2) + b_conv2)
+h_pool1 = max_pool_2x2(h_conv2)
 
-W_conv2 = weight_variable([5, 5, 5, 10])
-b_conv2 = bias_variable([10])
+#W_conv2 = weight_variable([5, 5, 128, 256])
+#b_conv2 = bias_variable([20])
 
-h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
-h_pool2 = max_pool_2x2(h_conv2)
+h_conv3 = tf.nn.relu(conv2d(h_pool1, W_conv3) + b_conv3)
+h_conv4 = tf.nn.relu(conv2d(h_conv3, W_conv4) + b_conv4)
 
-W_fc1 = weight_variable([32 * 32 * 10, 1024])
+h_conv5 = tf.nn.relu(conv2d(h_conv4, W_conv5) + b_conv5)
+h_pool2 = max_pool_2x2(h_conv4)
+
+W_fc1 = weight_variable([32 * 32 * 20, 1024])
 b_fc1 = bias_variable([1024])
 
-h_pool2_flat = tf.reshape(h_pool2, [-1, 32*32*10])
+h_pool2_flat = tf.reshape(h_pool2, [-1, 32*32*20])
 h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
 keep_prob = tf.placeholder(tf.float32)
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
-W_fc2 = weight_variable([1024, 1])
-b_fc2 = bias_variable([1])
+W_fc2 = weight_variable([1024, 1024])
+b_fc2 = bias_variable([1024])
 
-y_conv = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
+h_fc2 = tf.nn.relu(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+h_fc2_drop = tf.nn.dropout(h_fc2, keep_prob)
 
+W_fc3 = weight_variable([1024, 1])
+b_fc3 = bias_variable([1])
+
+y_conv = tf.matmul(h_fc2_drop, W_fc3) + b_fc3
+y_conv = tf.sigmoid(y_conv)
 
 # ## Train and Evaluate
 
 # In[ ]:
 
 cross_entropy = tf.reduce_mean(
-    tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
-train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
-correct_prediction = tf.equal(tf.argmax(y_conv, 1),  tf.argmax(y_, 1))
+    tf.nn.sigmoid_cross_entropy_with_logits(labels=y_, logits=y_conv) + 0.01*tf.nn.l2_loss(W_conv1))
+train_step = tf.train.AdamOptimizer(learning_rate=3e-3, beta1=0.9, beta2=0.99, epsilon=1.0).minimize(cross_entropy)
+#y_thres = tf.cast(y_conv + 0.5, tf.int32)
+y_thres = tf.round(y_conv)
+correct_prediction = tf.equal(y_thres, y_)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction,  tf.float32))
 
 train_iterations = 10000
 test_iterations = 100
 
-with tf.Session() as sess:
+with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     # Initialize the variables
     sess.run(tf.global_variables_initializer())
     # Initialize the queue threads to start to shovel data
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
-    
+    '''
     print('W_conv1: ' + str(sess.run(tf.shape(W_conv1))))
     print('b_conv1: ' + str(sess.run(tf.shape(b_conv1))))
     print('x_image: ' + str(sess.run(tf.shape(x_image), feed_dict = {x: train_image_batch.eval()})))
@@ -319,24 +342,25 @@ with tf.Session() as sess:
     print('b_fc1: ' + str(sess.run(tf.shape(b_fc1))))
     print('h_pool2_flat: ' + str(sess.run(tf.shape(h_pool2_flat), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval()})))
     print('h_fc1: ' + str(sess.run(tf.shape(h_fc1), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval()})))
-    #print('keep_prob: ' + str(sess.run(tf.shape(keep_prob), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep})))
+    print('keep_prob: ' + str(sess.run(tf.shape(keep_prob), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep})))
     print('h_fc1_drop: ' + str(sess.run(tf.shape(h_fc1_drop), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
     print('W_fc2: ' + str(sess.run(tf.shape(W_fc2))))
     print('b_fc2: ' + str(sess.run(tf.shape(b_fc2))))
     print('y_conv: ' + str(sess.run(tf.shape(y_conv), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    
+    '''
     print("Training")
     for i in range(train_iterations):
         start_time = time()
         feed_dict = {x: train_image_batch.eval(),
                      y_: train_label_batch.eval(),
-                     keep_prob: 1.0}
-        if i % 100 == 0:
+                     keep_prob: 0.8}
+        if i % 1 == 0:
             train_accuracy = accuracy.eval(feed_dict)
+            #print("f1_score", sklearn.metrics.f1_score(y_.eval(), y_thres.eval()))
             print("Step %d, Training accuracy %g" % (i, train_accuracy))
         feed_dict = {x: train_image_batch.eval(),
                      y_: train_label_batch.eval(),
-                     keep_prob: 0.5}
+                     keep_prob: 0.8}
         train_step.run(feed_dict)
         end_time = time()
         print("Step %d, Training time %f" % (i, end_time - start_time))
@@ -350,4 +374,3 @@ with tf.Session() as sess:
     coord.request_stop()
     coord.join(threads)
     sess.close()
-
