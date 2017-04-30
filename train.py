@@ -1,7 +1,8 @@
-# Image Segmentation (Face Detection) using Deep Learning
-# =======================================================
-# Authors: Raghav Gupta, Akshay Khadse, Soumya Dutta, Ashish Sukhwani
-# Date: 31/03/2017
+# Face Detection using Deep Learning
+# ==================================
+
+# Authors: Akshay Khadse, Ashish Sukhwani, Raghav Gupta, Soumya Dutta
+# Date: 29/04/2017
 
 from tensorflow.python.framework import ops
 from tensorflow.python.framework import dtypes
@@ -162,34 +163,6 @@ test_image_batch = tf.concat([pos_test_image_batch, neg_test_image_batch], 0)
 test_label_batch = tf.concat([pos_test_label_batch, neg_test_label_batch], 0)
 
 
-# Run the Queue Runners and Start a Session
-# Note: This section is meant for testing only. Do not run during main code.
-
-'''
-with tf.Session() as sess:
-    # Initialize the variables
-    sess.run(tf.global_variables_initializer())
-    # print(sess.run(all_images))
-
-    # Initialize the queue threads to start to shovel data
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(coord=coord)
-
-    print("From the train set:")
-    for i in range(1):
-        print(sess.run(train_label_batch))
-
-    print("From the test set:")
-    for i in range(1):
-        print(sess.run(test_label_batch))
-
-    # Stop our queue threads and properly close the session
-    coord.request_stop()
-    coord.join(threads)
-    sess.close()
-'''
-
-
 # Neural Network Model
 # --------------------
 
@@ -243,8 +216,6 @@ b_conv3 = bias_variable([15])
 h_conv3 = tf.nn.relu(conv2d(h_pool_b, W_conv3) + b_conv3)
 h_pool_c = max_pool_2x2(h_conv3)
 
-
-
 W_fc1 = weight_variable([16 * 16 * 15, 4096])
 b_fc1 = bias_variable([4096])
 
@@ -266,69 +237,34 @@ y_conv = tf.sigmoid(tf.matmul(h_fc2_drop, W_fc3) + b_fc3)
 # Train and Evaluate
 # ------------------
 
-#cross_entropy = tf.reduce_mean(
-#    tf.nn.sigmoid_cross_entropy_with_logits(labels=y_, logits=y_conv) + 0.01*(tf.nn.l2_loss(W_conv1)+tf.nn.l2_loss(W_conv2)+tf.nn.l2_loss(W_fc1)+tf.nn.l2_loss(W_fc2)))
-#cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv), reduction_indices=[1]))+ 0.01*(tf.nn.l2_loss(W_conv1)+tf.nn.l2_loss(W_conv2)+tf.nn.l2_loss(W_conv3)+tf.nn.l2_loss(W_fc1)+tf.nn.l2_loss(W_fc2)+tf.nn.l2_loss(W_fc3))
-#train_step = tf.train.AdamOptimizer(learning_rate=3e-3, beta1=0.7, beta2=0.75, epsilon=1e-8).minimize(cross_entropy)
-
 cross_entropy = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(y_, y_conv, pos_weight = 3.5)) + 0.01*(tf.nn.l2_loss(W_conv1)+tf.nn.l2_loss(W_conv2)+tf.nn.l2_loss(W_conv3)+tf.nn.l2_loss(W_fc1)+tf.nn.l2_loss(W_fc2)+tf.nn.l2_loss(W_fc3))
-train_step = tf.train.AdamOptimizer(learning_rate=3e-6, beta1=0.7, beta2=0.75, epsilon=1e-8).minimize(cross_entropy)
 
-#train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
-#correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
-#accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+train_step = tf.train.AdamOptimizer(learning_rate=3e-6, beta1=0.7, beta2=0.75, epsilon=1e-8).minimize(cross_entropy)
 
 y_thres = tf.round(y_conv)
 correct_prediction = tf.equal(y_thres, y_)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction,  tf.float32))
 
-train_iterations = 200000
-test_iterations = 10
+train_iterations = 50000
+test_iterations = 100
 
+# Add ops to save and restore all the variables.
 saver = tf.train.Saver()
 
 def save_model(x, y):
     # Save the variables to disk.
-    #os.makedirs("./saved_model_bak/model_"+str(y)+"_"+str(x))
-    save_path = saver.save(sess, "./saved_model_bak/model_"+str(y)+"_"+str(x)+".ckpt")
+    save_path = saver.save(sess, "./saved_model/model.ckpt")
     print("Model saved in file: %s" % save_path)
 
 with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     # Initialize the variables
     sess.run(tf.global_variables_initializer())
-    
-    # Restore variables from disk.
-    '''
-    saver.restore(sess, "./saved_model_bak/model3000.ckpt")
-    print("Model restored.")
-    '''
 
     # Initialize the queue threads to start to shovel data
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
 
-    # Code to Test if layers are working
-    '''
-    print('#_y_: ' + str(sess.run(tf.shape(y_), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_x: ' + str(sess.run(tf.shape(x), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_conv1: ' + str(sess.run(tf.shape(h_conv1), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_conv2: ' + str(sess.run(tf.shape(h_conv2), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_pool_a: ' + str(sess.run(tf.shape(h_pool_a), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_conv3: ' + str(sess.run(tf.shape(h_conv3), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_conv4: ' + str(sess.run(tf.shape(h_conv4), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_conv5: ' + str(sess.run(tf.shape(h_conv5), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_pool_b: ' + str(sess.run(tf.shape(h_pool_b), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_pool_b_flat: ' + str(sess.run(tf.shape(h_pool_b_flat), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_fc1: ' + str(sess.run(tf.shape(h_fc1), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_fc1_drop: ' + str(sess.run(tf.shape(h_fc1_drop), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_fc2: ' + str(sess.run(tf.shape(h_fc2), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_h_fc2_drop: ' + str(sess.run(tf.shape(h_fc2_drop), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    print('#_y_conv: ' + str(sess.run(tf.shape(y_conv), feed_dict = {x: train_image_batch.eval(), y_: train_label_batch.eval(), keep_prob: 1.0})))
-    
-    '''
     print("Training")
-    # Add ops to save and restore all the variables.
-    saver = tf.train.Saver()
 
     for i in range(train_iterations):
         start_time = time()
@@ -338,7 +274,6 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         if i % 1 == 0:
             train_accuracy = accuracy.eval(feed_dict)
             error = cross_entropy.eval(feed_dict)
-            #print("f1_score", sklearn.metrics.f1_score(y_.eval(), y_thres.eval()))
             print("Step %d, Training accuracy %g  %g" % (i, train_accuracy, error))
         feed_dict = {x: train_image_batch.eval(),
                      y_: train_label_batch.eval(),
@@ -346,16 +281,17 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         train_step.run(feed_dict)
         end_time = time()
         print("Training time %f" % (end_time - start_time))
-        if train_accuracy >= 0.85:
-            save_model(i, train_accuracy)
        
     for i in range(test_iterations):
-        print("test accuracy %g" % accuracy.eval(feed_dict={
+        print("validation accuracy %g" % accuracy.eval(feed_dict={
               x: test_image_batch.eval(), y_: test_label_batch.eval(),
               keep_prob: 1.0}))
 
+    # Save trained model
+    save_model(i, train_accuracy)
 
     # Stop our queue threads and properly close the session
     coord.request_stop()
     coord.join(threads)
     sess.close()
+

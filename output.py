@@ -134,6 +134,7 @@ b_fc3 = bias_variable([1])
 
 y_conv = tf.sigmoid(tf.matmul(h_fc2_drop, W_fc3) + b_fc3)
 y_out = tf.round(y_conv)
+
 # Train and Evaluate
 # ------------------
 
@@ -142,47 +143,33 @@ saver = tf.train.Saver()
 with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
 
     # Restore variables from disk.
-    saver.restore(sess, "./saved_model_bak/model_0.942857_1181.ckpt")
+    saver.restore(sess, "./saved_model/model.ckpt")
     print("Model restored.")
 
     # Initialize the queue threads to start to shovel data
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
     size_box = 32
+
     print("Testing")
-    print('xyz ' + str(sess.run(tf.shape(test_image_batch))))
-    print('xyz ' + str(sess.run(test_image_batch)))
-    #print('x: ' + str(sess.run(tf.shape(x), feed_dict = {x: test_image_batch.eval(), keep_prob: 1.0})))
-    #print('x: ' + str(sess.run(x, feed_dict = {x: test_image_batch.eval(), keep_prob: 1.0})))
-    #print(sess.run(y_conv, feed_dict = {x: test_image_batch.eval(), keep_prob: 1.0}))
-    #print(tf.round(y_conv))
-    #print(sess.run(tf.shape(y_conv), feed_dict = {x: test_image_batch.eval(), keep_prob: 1}))
+    # creates sliding window and stores rectangular coordinates of faces
     face_file = open('faces.txt', 'w')
     for i in range(0, 128-size_box, 8):
         for j in range(0, 128-size_box, 8):
             s_out = ''
-            #if(i < 384 & j < 384):
-            #test_image = tf.slice(test_image_batch, [0, i, j, 0], [1, 128, 128, 1])
             test_image1 = tf.image.crop_to_bounding_box(test_image, j, i, size_box, size_box)
             test_image1 = tf.image.resize_images(test_image1, [128, 128])
             test_image2 = tf.expand_dims(test_image1, 0)
             y_res = sess.run(y_conv, feed_dict = {x: test_image2.eval(), keep_prob: 1.0})
             print("#_" + str(y_res))
             if ((y_res) > 0.5):
-                #boxes = [float(j), float(i), float((j+31)/512), float((i+31)/512)]
                 boxes = tf.constant([1, 1, float(j), float(i), float((j+31)/512), float((i+31)/512)])
                 s_out = str(j) + "," + str(i) + "," + str(float((j+size_box-1))) + "," + str(float((i+size_box-1))) + "," + str(y_res)
                 face_file.write(s_out + "\n")
                 print('#'+str(type(boxes)))
-                #l = [boxes, y_conv]
-                #faces.append(l)
                 print("#_" + str(i) + str(j))
-                #boxes = [0.1, 0.2, 0.5, 0.9]
-                #xyz = tf.image.draw_bounding_boxes(tf.expand_dims(test_image, boxes, name=None)
-                #print('#'+str(type(xyz)))
-                #out = xyz.eval(session = sess)
-                #print("#_" + str(xyz.shape))
     # Stop our queue threads and properly close the session
     coord.request_stop()
     coord.join(threads)
     sess.close()
+
