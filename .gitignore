@@ -93,7 +93,4 @@ ENV/
 # Rope project settings
 .ropeproject
 
-trail/
-face_detection_dataset/
-saved_model/
 *.tar.gz
