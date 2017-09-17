@@ -71,3 +71,5 @@ project_folder
 `haar.py`
 -------
 - Uses xml files of haar cascade classifier from OpenCV to generate bounding boxes around faces of test images.
+
+[embed]documentation/final_report.pdf[/embed]
